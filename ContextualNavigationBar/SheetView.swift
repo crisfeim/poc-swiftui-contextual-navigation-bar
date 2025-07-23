@@ -126,9 +126,13 @@ fileprivate struct NavStateGetter: View {
     @ViewBuilder let content: () -> AnyView
     @ViewBuilder let contextButtons: () -> AnyView
     var body: some View {
-        content().onAppear {
-            navState.contextualButtons = contextButtons()
-        }
+        content()
+            .onAppear {
+                navState.contextualButtons = contextButtons()
+            }
+            .onDisappear {
+                navState.contextualButtons = nil
+            }
     }
 }
 
