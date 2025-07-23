@@ -35,13 +35,11 @@ struct SheetView: View {
             InitialSheetScreen()
                 .environment(navState)
                 .navigationDestination(for: NavigationItem.self) { destination in
-                    
                     AnyView(destination.content())
                         .environment(navState)
                         .navigationBarHidden(true)
                     
                 }
-                .navigationBarHidden(true)
         }
         .overlay(navigationBar, alignment: .top)
         
