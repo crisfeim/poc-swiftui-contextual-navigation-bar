@@ -1,18 +1,20 @@
 // © 2025  Cristian Felipe Patiño Rojas. Created on 23/7/25.
 
+
 import SwiftUI
 
 struct ContentView: View {
+    @State var showSheet = false
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Button("Show sheet") {
+            showSheet = true
         }
-        .padding()
+            .sheet(isPresented: $showSheet) {
+                SheetView()
+            }
     }
 }
+
 
 #Preview {
     ContentView()
