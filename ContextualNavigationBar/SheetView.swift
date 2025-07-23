@@ -2,14 +2,9 @@
 
 import SwiftUI
 
-protocol NavigableScreen: View {
-    func contextualButtons() -> AnyView
-}
-
 struct NavigationItem: Hashable, Equatable {
     let id = UUID()
-    let content: () -> any NavigableScreen
-    
+    let content: () -> AnyView
     
     static func ==(lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id
@@ -24,9 +19,10 @@ struct NavigationItem: Hashable, Equatable {
 @Observable
 class NavigationState {
     var path: [NavigationItem] = []
+    var contextualButtons: AnyView?
     
-    func push<V: NavigableScreen>(_ view: V) {
-        path.append(NavigationItem { view })
+    func push<V: View>(_ view: V) {
+        path.append(NavigationItem { AnyView(view) })
     }
 }
 
@@ -81,8 +77,9 @@ struct SheetView: View {
         Angle(degrees: navState.path.isEmpty ? 0 : 90)
     }
     
+    @ViewBuilder
     var contextualButtons: some View {
-        navState.path.last?.content().contextualButtons()
+        navState.contextualButtons
     }
 }
 
@@ -95,27 +92,45 @@ struct InitialSheetScreen: View {
     }
 }
 
-struct Screen2: NavigableScreen {
+struct Screen2: View {
     @Environment(NavigationState.self) var navState
     var body: some View {
         Button("Go to third screen") {
             navState.push(Screen3())
         }
-    }
-    
-    func contextualButtons() -> AnyView {
-        AnyView(Text("Some button"))
+        .customNavigationButtons(Text("Some button"))
     }
 }
 
-
-struct Screen3: NavigableScreen {
+struct Screen3: View {
+   
+    @State var count = 0
     var body: some View {
-       Text("Screen 3")
+        Text(count.description)
+            .customNavigationButtons(contextualButtons)
     }
     
-    func contextualButtons() -> AnyView {
-        AnyView(Text("Some button"))
+    var contextualButtons: some View {
+        Button("+") {
+            count += 1
+        }
+    }
+}
+
+extension View {
+    func customNavigationButtons<V: View>(_ buttons: V) -> some View {
+        NavStateGetter(content: {AnyView(self)}, contextButtons: {AnyView(buttons)})
+    }
+}
+
+fileprivate struct NavStateGetter: View {
+    @Environment(NavigationState.self) var navState
+    @ViewBuilder let content: () -> AnyView
+    @ViewBuilder let contextButtons: () -> AnyView
+    var body: some View {
+        content().onAppear {
+            navState.contextualButtons = contextButtons()
+        }
     }
 }
 
