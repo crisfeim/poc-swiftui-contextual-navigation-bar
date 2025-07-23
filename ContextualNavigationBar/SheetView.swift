@@ -87,6 +87,9 @@ struct InitialSheetScreen: View {
         Button("Go to second screen") {
             navState.push(Screen2())
         }
+        .onAppear {
+            navState.contextualButtons = nil
+        }
     }
 }
 
@@ -129,9 +132,6 @@ fileprivate struct NavStateGetter: View {
         content()
             .onAppear {
                 navState.contextualButtons = contextButtons()
-            }
-            .onDisappear {
-                navState.contextualButtons = nil
             }
     }
 }
