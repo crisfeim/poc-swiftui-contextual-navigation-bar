@@ -2,29 +2,32 @@
 
 import SwiftUI
 
-enum Destinations: String, View {
-    case secondScreen
-    case thirdScreen
+protocol NavigableScreen: View {
+    func contextualButtons() -> AnyView
+}
+
+struct NavigationItem: Hashable, Equatable {
+    let id = UUID()
+    let content: () -> any NavigableScreen
     
-    var body: some View {
-        switch self {
-        case .secondScreen: Screen2()
-        case .thirdScreen: Text("Third and last screen")
-        }
+    
+    static func ==(lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id
     }
     
-    @ViewBuilder
-    var contextualButtons: some View {
-        switch self {
-        case .secondScreen: Text("Contextual buttons")
-        case .thirdScreen: Text("Some other buttons")
-        }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 
+
 @Observable
 class NavigationState {
-    var path: [Destinations] = []
+    var path: [NavigationItem] = []
+    
+    func push<V: NavigableScreen>(_ view: V) {
+        path.append(NavigationItem { view })
+    }
 }
 
 struct SheetView: View {
@@ -35,9 +38,9 @@ struct SheetView: View {
         NavigationStack(path: $navState.path) {
             InitialSheetScreen()
                 .environment(navState)
-                .navigationDestination(for: Destinations.self) { destination in
+                .navigationDestination(for: NavigationItem.self) { destination in
                     
-                    destination
+                    AnyView(destination.content())
                         .environment(navState)
                         .navigationBarHidden(true)
                     
@@ -79,7 +82,7 @@ struct SheetView: View {
     }
     
     var contextualButtons: some View {
-        navState.path.last?.contextualButtons
+        navState.path.last?.content().contextualButtons()
     }
 }
 
@@ -87,17 +90,32 @@ struct InitialSheetScreen: View {
     @Environment(NavigationState.self) var navState
     var body: some View {
         Button("Go to second screen") {
-            navState.path.append(.secondScreen)
+            navState.push(Screen2())
         }
     }
 }
 
-struct Screen2: View {
+struct Screen2: NavigableScreen {
     @Environment(NavigationState.self) var navState
     var body: some View {
         Button("Go to third screen") {
-            navState.path.append(.thirdScreen)
+            navState.push(Screen3())
         }
+    }
+    
+    func contextualButtons() -> AnyView {
+        AnyView(Text("Some button"))
+    }
+}
+
+
+struct Screen3: NavigableScreen {
+    var body: some View {
+       Text("Screen 3")
+    }
+    
+    func contextualButtons() -> AnyView {
+        AnyView(Text("Some button"))
     }
 }
 
