@@ -2,29 +2,28 @@
 
 import SwiftUI
 
-enum Destinations: String, View {
-    case secondScreen
-    case thirdScreen
+struct NavigationItem: Hashable, Equatable {
+    let id = UUID()
+    let content: () -> AnyView
     
-    var body: some View {
-        switch self {
-        case .secondScreen: Screen2()
-        case .thirdScreen: Text("Third and last screen")
-        }
+    static func ==(lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id
     }
     
-    @ViewBuilder
-    var contextualButtons: some View {
-        switch self {
-        case .secondScreen: Text("Contextual buttons")
-        case .thirdScreen: Text("Some other buttons")
-        }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 
+
 @Observable
 class NavigationState {
-    var path: [Destinations] = []
+    var path: [NavigationItem] = []
+    var contextualButtons: AnyView?
+    
+    func push<V: View>(_ view: V) {
+        path.append(NavigationItem { AnyView(view) })
+    }
 }
 
 struct SheetView: View {
@@ -35,14 +34,12 @@ struct SheetView: View {
         NavigationStack(path: $navState.path) {
             InitialSheetScreen()
                 .environment(navState)
-                .navigationDestination(for: Destinations.self) { destination in
-                    
-                    destination
+                .navigationDestination(for: NavigationItem.self) { destination in
+                    AnyView(destination.content())
                         .environment(navState)
                         .navigationBarHidden(true)
                     
                 }
-                .navigationBarHidden(true)
         }
         .overlay(navigationBar, alignment: .top)
         
@@ -78,8 +75,9 @@ struct SheetView: View {
         Angle(degrees: navState.path.isEmpty ? 0 : 90)
     }
     
+    @ViewBuilder
     var contextualButtons: some View {
-        navState.path.last?.contextualButtons
+        navState.contextualButtons
     }
 }
 
@@ -87,7 +85,10 @@ struct InitialSheetScreen: View {
     @Environment(NavigationState.self) var navState
     var body: some View {
         Button("Go to second screen") {
-            navState.path.append(.secondScreen)
+            navState.push(Screen2())
+        }
+        .onAppear {
+            navState.contextualButtons = nil
         }
     }
 }
@@ -96,8 +97,42 @@ struct Screen2: View {
     @Environment(NavigationState.self) var navState
     var body: some View {
         Button("Go to third screen") {
-            navState.path.append(.thirdScreen)
+            navState.push(Screen3())
         }
+        .customNavigationButtons(Text("Some button"))
+    }
+}
+
+struct Screen3: View {
+   
+    @State var count = 0
+    var body: some View {
+        Text(count.description)
+            .customNavigationButtons(contextualButtons)
+    }
+    
+    var contextualButtons: some View {
+        Button("+") {
+            count += 1
+        }
+    }
+}
+
+extension View {
+    func customNavigationButtons<V: View>(_ buttons: V) -> some View {
+        NavStateGetter(content: {AnyView(self)}, contextButtons: {AnyView(buttons)})
+    }
+}
+
+fileprivate struct NavStateGetter: View {
+    @Environment(NavigationState.self) var navState
+    @ViewBuilder let content: () -> AnyView
+    @ViewBuilder let contextButtons: () -> AnyView
+    var body: some View {
+        content()
+            .onAppear {
+                navState.contextualButtons = contextButtons()
+            }
     }
 }
 
